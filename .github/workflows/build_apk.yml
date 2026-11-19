@@ -24,11 +24,22 @@ jobs:
       - name: Generate Android project and configure Firebase
         shell: bash
         run: |
+          # Preserve Firebase config before regenerating Android scaffold.
+          if [ -f android/app/google-services.json ]; then
+            cp android/app/google-services.json "$RUNNER_TEMP/google-services.json"
+          fi
+
           # The checked-in Android scaffold omits the binary Gradle wrapper JAR.
           # Regenerate the complete Flutter Android project in CI when it is absent.
           if [ ! -f android/gradlew ] || [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
             rm -rf android
             flutter create . --platforms=android --org com.mycompany --project-name ytmutual
+          fi
+
+          # Restore Firebase config after Flutter recreates the Android directory.
+          if [ -f "$RUNNER_TEMP/google-services.json" ]; then
+            mkdir -p android/app
+            cp "$RUNNER_TEMP/google-services.json" android/app/google-services.json
           fi
 
           python3 - <<'PY'
