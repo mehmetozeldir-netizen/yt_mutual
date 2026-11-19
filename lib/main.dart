@@ -156,8 +156,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         break;
       case 'Bize ulaşın':
-        final uri = Uri(scheme: 'mailto', path: 'destek@ytmutual.com', queryParameters: {'subject': 'Yt Mutual destek'});
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        _showInfo(title, 'Destek e-posta adresi henüz tanımlanmadı. Yayın öncesinde doğrulanmış iletişim adresi eklenecek.');
         break;
       case 'Çıkış yap':
         final confirmed = await showDialog<bool>(
