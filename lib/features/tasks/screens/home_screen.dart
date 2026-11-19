@@ -26,12 +26,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final query = FirebaseFirestore.instance.collection('campaigns')
       .where('status', isEqualTo: 'active').limit(50);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: AppColors.primaryRed, foregroundColor: Colors.white,
-        title: const Text('YT MUTUAL', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [IconButton(tooltip: 'Yenile', onPressed: () {},
-          icon: const Icon(Icons.refresh))]),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(
@@ -90,7 +85,6 @@ class HomeScreen extends StatelessWidget {
             },
           );
         },
-      ),
-    );
+      );
   }
 }
