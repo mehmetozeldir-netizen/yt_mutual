@@ -62,11 +62,18 @@ jobs:
           settings = settings_gradle.read_text()
           kts = app_gradle.suffix == ".kts"
 
-          # Firebase Auth requires Android API level 23 or newer.
+          # Use explicit Android SDK values in the generated Gradle file.
           if kts:
               app = re.sub(r'minSdk\s*=\s*[^\s]+', 'minSdk = 23', app, count=1)
+              app = re.sub(r'targetSdk\s*=\s*[^\s]+', 'targetSdk = 35', app, count=1)
+              app = re.sub(r'compileSdk\s*=\s*[^\s]+', 'compileSdk = 35', app, count=1)
           else:
               app = re.sub(r'minSdk(?:Version)?\s+[^\s]+', 'minSdk 23', app, count=1)
+              app = re.sub(r'targetSdk(?:Version)?\s+[^\s]+', 'targetSdk 35', app, count=1)
+              app = re.sub(r'compileSdk(?:Version)?\s+[^\s]+', 'compileSdk 35', app, count=1)
+          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
 
           if kts:
               app = re.sub(r'namespace\s*=\s*"[^"]+"',
