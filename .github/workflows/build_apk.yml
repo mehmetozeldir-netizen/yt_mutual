@@ -18,10 +18,42 @@ jobs:
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
-      - name: Generate Android files if missing
+      - name: Generate Android project and configure Firebase
+        shell: bash
         run: |
           if [ ! -d "android" ]; then
-            flutter create . --platforms=android --project-name yt_mutual
+            flutter create . --platforms=android --project-name yt_mutual --org com.mycompany
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_gradle = Path("android/app/build.gradle.kts")
+          text = app_gradle.read_text()
+          text = text.replace('namespace = "com.example.yt_mutual"', 'namespace = "com.mycompany.ytmutual"')
+          text = text.replace('applicationId = "com.example.yt_mutual"', 'applicationId = "com.mycompany.ytmutual"')
+          if "id(\"com.google.gms.google-services\")" not in text:
+              text = text.replace(
+                  'id("com.android.application")',
+                  'id("com.android.application")\n    id("com.google.gms.google-services")'
+              )
+          app_gradle.write_text(text)
+
+          settings = Path("android/settings.gradle.kts")
+          if settings.exists():
+              s = settings.read_text()
+              marker = 'id("com.android.application")'
+              if 'id("com.google.gms.google-services")' not in s:
+                  s = s.replace(
+                      marker,
+                      marker + '\n        id("com.google.gms.google-services") version "4.4.2" apply false'
+                  )
+              settings.write_text(s)
+          PY
+
+          if [ ! -f "android/app/google-services.json" ]; then
+            echo "::warning::android/app/google-services.json is not present. Upload it to enable Firebase configuration in the APK."
+            sed -i '/id("com.google.gms.google-services")/d' android/app/build.gradle.kts
           fi
       - run: flutter pub get
       - run: flutter build apk --release
