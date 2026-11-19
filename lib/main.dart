@@ -191,9 +191,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     final pages = [
       MyCampaignsScreen(ownerUid: widget.user.uid, onCreate: _openCreate),
-      HomeScreen(ownerUid: widget.user.uid, taskType: 'İzle'),
-      HomeScreen(ownerUid: widget.user.uid, taskType: 'Abone Ol'),
-      HomeScreen(ownerUid: widget.user.uid, taskType: 'Beğen'),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'İzle', isActive: _index == 1),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'Abone Ol', isActive: _index == 2),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'Beğen', isActive: _index == 3),
     ];
 
     return Scaffold(
