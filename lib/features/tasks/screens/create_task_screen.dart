@@ -1,281 +1,71 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../models/video_task_model.dart';
-
-export '../models/video_task_model.dart';
-
-class TaskService {
-  static final List<dynamic> _tasks = <dynamic>[];
-  static int _points = 0;
-
-  List<dynamic> getTasks() {
-    return List<dynamic>.unmodifiable(_tasks);
-  }
-
-  int addPoints({
-    dynamic currentPoints,
-    dynamic task,
-    int? amount,
-  }) {
-    final int basePoints = currentPoints is int ? currentPoints : _points;
-    final int reward = amount ?? (task != null ? _extractReward(task) : 10);
-    _points = basePoints + reward;
-    return _points;
-  }
-
-  int _extractReward(dynamic task) {
-    try {
-      final dynamic value = task.rewardPoints;
-      if (value is int) return value;
-    } catch (_) {}
-    try {
-      final dynamic value = task.points;
-      if (value is int) return value;
-    } catch (_) {}
-    return 10;
-  }
-
-  Future<Map<String, dynamic>> createTask({
-    required String title,
-    required String videoUrl,
-    required int targetViews,
-    String? ownerUid,
-  }) async {
-    final Map<String, dynamic> item = <String, dynamic>{
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'title': title.trim(),
-      'videoUrl': videoUrl.trim(),
-      'targetViews': targetViews,
-      'ownerUid': ownerUid,
-    };
-    _tasks.add(item);
-    return item;
-  }
-}
+import '../../../core/utils/youtube_helper.dart';
 
 class CreateTaskScreen extends StatefulWidget {
-  final dynamic currentPoints;
-  final String? ownerUid;
-  final VoidCallback? onCreated;
-  final VoidCallback? onTaskCreated;
-
-  const CreateTaskScreen({
-    super.key,
-    this.currentPoints,
-    this.ownerUid,
-    this.onCreated,
-    this.onTaskCreated,
-  });
-
+  final String ownerUid;
+  const CreateTaskScreen({super.key, required this.ownerUid});
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
 }
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _urlController = TextEditingController();
-  final TextEditingController _viewsController =
-      TextEditingController(text: '100');
-  final TaskService _taskService = TaskService();
-
-  bool _isSubmitting = false;
+  final _formKey = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _url = TextEditingController();
+  final _description = TextEditingController();
+  bool _busy = false;
 
   @override
-  void dispose() {
-    _titleController.dispose();
-    _urlController.dispose();
-    _viewsController.dispose();
-    super.dispose();
-  }
+  void dispose() { _title.dispose(); _url.dispose(); _description.dispose(); super.dispose(); }
 
-  Future<void> _submitTask() async {
-    final FormState? form = _formKey.currentState;
-    if (form == null || !form.validate()) {
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
     try {
-      final int views = int.tryParse(_viewsController.text.trim()) ?? 100;
-      await _taskService.createTask(
-        title: _titleController.text,
-        videoUrl: _urlController.text,
-        targetViews: views <= 0 ? 100 : views,
-        ownerUid: widget.ownerUid,
-      );
-
-      widget.onCreated?.call();
-      widget.onTaskCreated?.call();
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gorev olusturuldu.'),
-        ),
-      );
-
-      Navigator.of(context).pop();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
+      await FirebaseFirestore.instance.collection('campaigns').add({
+        'ownerUid': widget.ownerUid, 'title': _title.text.trim(),
+        'youtubeUrl': _url.text.trim(), 'videoId': YouTubeHelper.extractVideoId(_url.text.trim()),
+        'description': _description.text.trim(), 'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('İçerik gönderildi. Yönetici onayından sonra keşfette yayınlanacak.')));
+      Navigator.pop(context);
+    } on FirebaseException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kaydedilemedi: ${e.message ?? e.code}')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bir hata oluştu. Tekrar deneyin.')));
+    } finally { if (mounted) setState(() => _busy = false); }
   }
 
   @override
-  Widget build(BuildContext context) {
-    const Color primaryDark = Color(0xFF222222);
-    const Color surfaceWhite = Color(0xFFFFFFFF);
-    final String pointsText = widget.currentPoints?.toString() ?? '0';
-
-    return Scaffold(
-      backgroundColor: surfaceWhite,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        foregroundColor: surfaceWhite,
-        title: const Text('Yeni Gorev Olustur'),
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: surfaceWhite,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: primaryDark),
-                  ),
-                  child: Text(
-                    'Mevcut Puan: $pointsText',
-                    style: const TextStyle(
-                      color: primaryDark,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Video / Gorev Basligi',
-                    filled: true,
-                    fillColor: surfaceWhite,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  validator: (String? value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Baslik girin';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _urlController,
-                  keyboardType: TextInputType.url,
-                  decoration: InputDecoration(
-                    labelText: 'YouTube Video Baglantisi',
-                    filled: true,
-                    fillColor: surfaceWhite,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  validator: (String? value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Baglanti girin';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _viewsController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Hedef Izlenme',
-                    filled: true,
-                    fillColor: surfaceWhite,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryDark),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryDark,
-                      foregroundColor: surfaceWhite,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: _isSubmitting ? null : _submitTask,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: surfaceWhite,
-                            ),
-                          )
-                        : const Text(
-                            'Gorevi Kaydet',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('İçerik gönder')),
+    body: SafeArea(child: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(20), children: [
+      const Text('İçeriğini topluluğa tanıt. Gönderiler yayınlanmadan önce kontrol edilir.',
+        style: TextStyle(color: Colors.black54)),
+      const SizedBox(height: 18),
+      TextFormField(controller: _title, maxLength: 80,
+        decoration: const InputDecoration(labelText: 'Başlık', border: OutlineInputBorder()),
+        validator: (v) => v == null || v.trim().length < 3 ? 'En az 3 karakter gir.' : null),
+      const SizedBox(height: 14),
+      TextFormField(controller: _url, keyboardType: TextInputType.url,
+        decoration: const InputDecoration(labelText: 'YouTube bağlantısı', border: OutlineInputBorder()),
+        validator: (v) => v == null || YouTubeHelper.extractVideoId(v.trim()) == null
+          ? 'Geçerli bir YouTube video bağlantısı gir.' : null),
+      const SizedBox(height: 14),
+      TextFormField(controller: _description, maxLines: 4, maxLength: 500,
+        decoration: const InputDecoration(labelText: 'Açıklama (isteğe bağlı)', border: OutlineInputBorder())),
+      const SizedBox(height: 18),
+      const Text('Not: İzlenme, beğeni, yorum veya abone karşılığında ödül/puan vaat edilemez.',
+        style: TextStyle(color: Colors.deepOrange, fontSize: 13)),
+      const SizedBox(height: 18),
+      FilledButton(onPressed: _busy ? null : _submit,
+        child: _busy ? const CircularProgressIndicator() : const Text('İncelemeye gönder')),
+    ]))),
+  );
 }
