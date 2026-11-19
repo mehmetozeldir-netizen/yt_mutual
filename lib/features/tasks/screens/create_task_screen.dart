@@ -4,11 +4,11 @@ import '../models/video_task_model.dart';
 export '../models/video_task_model.dart';
 
 class TaskService {
-  static final List<VideoTaskModel> _tasks = <VideoTaskModel>[];
+  static final List<dynamic> _tasks = <dynamic>[];
   static int _points = 0;
 
-  List<VideoTaskModel> getTasks() {
-    return List<VideoTaskModel>.unmodifiable(_tasks);
+  List<dynamic> getTasks() {
+    return List<dynamic>.unmodifiable(_tasks);
   }
 
   int addPoints({
@@ -34,19 +34,19 @@ class TaskService {
     return 10;
   }
 
-  Future<VideoTaskModel> createTask({
+  Future> createTask({
     required String title,
     required String videoUrl,
     required int targetViews,
     String? ownerUid,
   }) async {
-    final VideoTaskModel item = VideoTaskModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title.trim(),
-      videoUrl: videoUrl.trim(),
-      targetViews: targetViews,
-      ownerUid: ownerUid,
-    );
+    final Map<String, dynamic> item = <String, dynamic>{
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'title': title.trim(),
+      'videoUrl': videoUrl.trim(),
+      'targetViews': targetViews,
+      'ownerUid': ownerUid,
+    };
     _tasks.add(item);
     return item;
   }
@@ -100,7 +100,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     try {
       final int views = int.tryParse(_viewsController.text.trim()) ?? 100;
-      final VideoTaskModel created = await _taskService.createTask(
+      await _taskService.createTask(
         title: _titleController.text,
         videoUrl: _urlController.text,
         targetViews: views <= 0 ? 100 : views,
@@ -120,7 +120,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
       );
 
-      Navigator.of(context).pop(created);
+      Navigator.of(context).pop();
     } finally {
       if (mounted) {
         setState(() {
