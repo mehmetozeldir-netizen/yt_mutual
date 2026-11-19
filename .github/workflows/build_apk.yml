@@ -62,6 +62,12 @@ jobs:
           settings = settings_gradle.read_text()
           kts = app_gradle.suffix == ".kts"
 
+          # Firebase Auth requires Android API level 23 or newer.
+          if kts:
+              app = re.sub(r"minSdk\\s*=\\s*[^\\s]+", "minSdk = 23", app, count=1)
+          else:
+              app = re.sub(r"minSdk(?:Version)?\\s+[^\\s]+", "minSdk 23", app, count=1)
+
           if kts:
               app = re.sub(r'namespace\s*=\s*"[^"]+"',
                            'namespace = "com.mycompany.ytmutual"', app, count=1)
