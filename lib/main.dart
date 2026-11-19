@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,20 @@ class YtMutualApp extends StatelessWidget {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  Future<void> _ensureProfile(User user) async {
+    final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final snapshot = await ref.get();
+    if (!snapshot.exists) {
+      await ref.set({
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? 'Yt Mutual Üyesi',
+        'points': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
@@ -43,7 +58,35 @@ class AuthGate extends StatelessWidget {
           }
           final user = auth.data;
           if (user == null) return const AuthScreen();
-          return MainShellScreen(user: user);
+          return FutureBuilder<void>(
+            future: _ensureProfile(user),
+            builder: (context, profile) {
+              if (profile.hasError) {
+                return Scaffold(
+                  body: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Profil yüklenemedi. Firebase Firestore kurallarını kontrol edin.'),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => FirebaseAuth.instance.signOut(),
+                            child: const Text('Çıkış yap'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+              if (profile.connectionState != ConnectionState.done) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              return MainShellScreen(user: user);
+            },
+          );
         },
       );
 }
