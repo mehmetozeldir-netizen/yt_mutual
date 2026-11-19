@@ -1,131 +1,60 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/youtube_helper.dart';
-import '../models/video_task_model.dart';
 
 class HomeScreen extends StatelessWidget {
-  final int points;
-  final List<VideoTaskModel> tasks;
-  final Set<String> completedTaskIds;
-  final void Function(VideoTaskModel task) onCompleteTask;
-
-  const HomeScreen({
-    super.key,
-    required this.points,
-    required this.tasks,
-    required this.completedTaskIds,
-    required this.onCompleteTask,
-  });
-
-  void _handleTaskTap(BuildContext context, VideoTaskModel task) {
-    if (completedTaskIds.contains(task.id)) return;
-
-    final resolvedId =
-        YouTubeHelper.extractVideoId(task.youtubeUrl) ?? task.videoId;
-    if (resolvedId.isEmpty) return;
-
-    onCompleteTask(task);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.primaryRed,
-        content: Text(
-          '+${task.rewardPoints} puan eklendi ($resolvedId)',
-          style: const TextStyle(color: AppColors.cardWhite),
-        ),
-      ),
-    );
-  }
+  final String ownerUid;
+  const HomeScreen({super.key, required this.ownerUid});
 
   @override
   Widget build(BuildContext context) {
+    final query = FirebaseFirestore.instance.collection('campaigns')
+      .where('status', isEqualTo: 'active').limit(50);
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: AppColors.cardWhite,
-        title: const Text(
-          'Yt Mutual',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: AppColors.cardWhite,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.stars, color: AppColors.primaryRed, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  '$points Puan',
-                  style: const TextStyle(
-                    color: AppColors.darkRed,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: tasks.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final task = tasks[index];
-          final isDone = completedTaskIds.contains(task.id);
-
-          return Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDone ? AppColors.surfaceLight : AppColors.cardWhite,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderLight),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: const TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Süre: ${task.requiredSeconds} sn  •  Ödül: +${task.rewardPoints} puan',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isDone ? AppColors.cardWhite : AppColors.primaryRed,
-                    foregroundColor:
-                        isDone ? AppColors.primaryRed : AppColors.cardWhite,
-                    side: const BorderSide(color: AppColors.primaryRed),
-                  ),
-                  onPressed: isDone ? null : () => _handleTaskTap(context, task),
-                  child: Text(isDone ? 'Tamamlandı' : 'Görevi Yap'),
-                ),
-              ],
-            ),
+      appBar: AppBar(backgroundColor: AppColors.primaryRed, foregroundColor: Colors.white,
+        title: const Text('Yt Mutual • Keşfet', style: TextStyle(fontWeight: FontWeight.bold))),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: query.snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return const Center(child: Text('İçerikler yüklenemedi. Firestore kurallarını kontrol edin.'));
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) return const Center(child: Padding(
+            padding: EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.video_library_outlined, size: 54, color: Colors.black38),
+              SizedBox(height: 12), Text('Henüz yayınlanmış içerik yok.', style: TextStyle(fontWeight: FontWeight.w600)),
+              SizedBox(height: 6), Text('İlk içeriği sen ekleyebilirsin.', textAlign: TextAlign.center),
+            ]),
+          ));
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final data = docs[index].data();
+              final title = data['title'] as String? ?? 'İçerik';
+              final description = data['description'] as String? ?? '';
+              final url = data['youtubeUrl'] as String? ?? '';
+              final owner = data['ownerUid'] as String? ?? '';
+              return Card(elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: AppColors.borderLight)),
+                child: Padding(padding: const EdgeInsets.all(16), child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.ondemand_video, color: AppColors.primaryRed),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                      if (owner == ownerUid) const Chip(label: Text('Senin içeriğin')),
+                    ]),
+                    if (description.isNotEmpty) ...[const SizedBox(height: 8), Text(description)],
+                    const SizedBox(height: 12),
+                    SelectableText(url, style: const TextStyle(color: AppColors.primaryRed)),
+                    const SizedBox(height: 8),
+                    const Text('İçerik keşfi ve gönüllü topluluk geri bildirimi içindir. İzlenme, beğeni veya abone karşılığında puan verilmez.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  ])),
+              );
+            },
           );
         },
       ),
