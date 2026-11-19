@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/video_task_model.dart';
 
-class VideoTaskModel {
-  final String id;
-  final String title;
-  final String videoUrl;
-  final int targetViews;
-  final int rewardPoints;
-  final String? ownerUid;
-
-  VideoTaskModel({
-    required this.id,
-    required this.title,
-    required this.videoUrl,
-    required this.targetViews,
-    this.rewardPoints = 10,
-    this.ownerUid,
-  });
-}
+export '../models/video_task_model.dart';
 
 class TaskService {
   static final List<VideoTaskModel> _tasks = <VideoTaskModel>[];
@@ -31,10 +16,8 @@ class TaskService {
     dynamic task,
     int? amount,
   }) {
-    final int basePoints =
-        currentPoints is int ? currentPoints : _points;
-    final int reward = amount ??
-        (task != null ? _extractReward(task) : 10);
+    final int basePoints = currentPoints is int ? currentPoints : _points;
+    final int reward = amount ?? (task != null ? _extractReward(task) : 10);
     _points = basePoints + reward;
     return _points;
   }
@@ -134,7 +117,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Gorev olusturuldu.'),
-          backgroundColor: Color(0xFFD32F2F),
         ),
       );
 
@@ -150,14 +132,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryRed = Color(0xFFD32F2F);
+    const Color primaryDark = Color(0xFF222222);
     const Color surfaceWhite = Color(0xFFFFFFFF);
     final String pointsText = widget.currentPoints?.toString() ?? '0';
 
     return Scaffold(
       backgroundColor: surfaceWhite,
       appBar: AppBar(
-        backgroundColor: primaryRed,
+        backgroundColor: primaryDark,
         foregroundColor: surfaceWhite,
         title: const Text('Yeni Gorev Olustur'),
         elevation: 0,
@@ -178,12 +160,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   decoration: BoxDecoration(
                     color: surfaceWhite,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: primaryRed),
+                    border: Border.all(color: primaryDark),
                   ),
                   child: Text(
                     'Mevcut Puan: $pointsText',
                     style: const TextStyle(
-                      color: primaryRed,
+                      color: primaryDark,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -197,11 +179,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     fillColor: surfaceWhite,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                      borderSide: const BorderSide(color: primaryDark, width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed),
+                      borderSide: const BorderSide(color: primaryDark),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -224,11 +206,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     fillColor: surfaceWhite,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                      borderSide: const BorderSide(color: primaryDark, width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed),
+                      borderSide: const BorderSide(color: primaryDark),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -251,11 +233,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     fillColor: surfaceWhite,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                      borderSide: const BorderSide(color: primaryDark, width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: primaryRed),
+                      borderSide: const BorderSide(color: primaryDark),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -267,7 +249,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   height: 48,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryRed,
+                      backgroundColor: primaryDark,
                       foregroundColor: surfaceWhite,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
