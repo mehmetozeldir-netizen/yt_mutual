@@ -18,9 +18,22 @@ class TaskItem {
 
 class TaskService {
   static final List<TaskItem> _tasks = <TaskItem>[];
+  static int _points = 0;
 
   List<TaskItem> getTasks() {
     return List<TaskItem>.unmodifiable(_tasks);
+  }
+
+  int getPoints([String? userId]) {
+    return _points;
+  }
+
+  int addPoints([
+    int amount = 0,
+    String? extraId,
+  ]) {
+    _points += amount;
+    return _points;
   }
 
   Future<void> createTask({
