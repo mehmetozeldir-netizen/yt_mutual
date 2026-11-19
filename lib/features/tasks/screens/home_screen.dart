@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startTimer() {
     _timer?.cancel();
-    if (_seconds == 0) setState(() => _seconds = _duration);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_seconds <= 1) {
@@ -44,33 +43,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void _changeTask() {
     _timer?.cancel();
     setState(() => _seconds = _duration);
+    _startTimer();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Yeni içerik bulunamadı. Daha sonra tekrar deneyebilirsin.')),
+      SnackBar(content: Text('${widget.taskType} bölümü için yeni içerik aranıyor.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWatch = widget.taskType == 'İzle';
-    final isSubscribe = widget.taskType == 'Abone Ol';
-    final score = isWatch ? '48' : (isSubscribe ? '32' : '16');
+    final taskIcon = widget.taskType == 'Abone Ol'
+        ? Icons.video_library_outlined
+        : widget.taskType == 'Beğen'
+            ? Icons.thumb_up_alt_outlined
+            : Icons.play_circle_outline;
+
     return ColoredBox(
       color: Colors.white,
       child: SafeArea(
         top: false,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
-              child: Row(
-                children: [
-                  _Metric(icon: Icons.favorite, value: score, label: 'Puan'),
-                  const Spacer(),
-                  _Metric(icon: Icons.timer_outlined, value: '$_seconds', label: 'Saniye'),
-                ],
-              ),
-            ),
             Expanded(
+              flex: 10,
               child: Center(
                 child: AspectRatio(
                   aspectRatio: 1.12,
@@ -80,19 +74,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Icon(
-                          isWatch ? Icons.play_circle_outline
-                              : (isSubscribe ? Icons.video_library_outlined : Icons.thumb_up_alt_outlined),
-                          color: Colors.white24,
-                          size: 58,
-                        ),
+                        Icon(taskIcon, color: Colors.white24, size: 58),
                         Positioned(
                           bottom: 12,
                           left: 12,
                           right: 12,
                           child: Text(
-                            isWatch ? 'Video oynatıcı alanı'
-                                : (isSubscribe ? 'Abonelik içerikleri' : 'Beğeni içerikleri'),
+                            widget.taskType == 'İzle'
+                                ? 'Video oynatıcı alanı'
+                                : widget.taskType == 'Abone Ol'
+                                    ? 'Kanal keşif alanı'
+                                    : 'İçerik keşif alanı',
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: Colors.white54, fontSize: 12),
                           ),
@@ -104,7 +96,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _Metric(icon: Icons.favorite, value: '48', label: 'Puan'),
+                  _Metric(icon: Icons.timer_outlined, value: '$_seconds', label: 'Saniye'),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
               child: SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -121,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10, top: 2),
               child: Text(
                 _seconds == 0 ? 'Süre tamamlandı' : 'Görev süresi: $_seconds saniye',
                 style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
