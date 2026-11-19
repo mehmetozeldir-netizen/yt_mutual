@@ -1,48 +1,63 @@
 import 'package:flutter/material.dart';
 
-class TaskItem {
+class VideoTaskModel {
   final String id;
   final String title;
   final String videoUrl;
   final int targetViews;
+  final int rewardPoints;
   final String? ownerUid;
 
-  TaskItem({
+  VideoTaskModel({
     required this.id,
     required this.title,
     required this.videoUrl,
     required this.targetViews,
+    this.rewardPoints = 10,
     this.ownerUid,
   });
 }
 
 class TaskService {
-  static final List<TaskItem> _tasks = <TaskItem>[];
+  static final List<VideoTaskModel> _tasks = <VideoTaskModel>[];
   static int _points = 0;
 
-  List<TaskItem> getTasks() {
-    return List<TaskItem>.unmodifiable(_tasks);
+  List<VideoTaskModel> getTasks() {
+    return List<VideoTaskModel>.unmodifiable(_tasks);
   }
 
-  int getPoints([String? userId]) {
+  int addPoints({
+    dynamic currentPoints,
+    dynamic task,
+    int? amount,
+  }) {
+    final int basePoints =
+        currentPoints is int ? currentPoints : _points;
+    final int reward = amount ??
+        (task != null ? _extractReward(task) : 10);
+    _points = basePoints + reward;
     return _points;
   }
 
-  int addPoints([
-    int amount = 0,
-    String? extraId,
-  ]) {
-    _points += amount;
-    return _points;
+  int _extractReward(dynamic task) {
+    try {
+      final dynamic value = task.rewardPoints;
+      if (value is int) return value;
+    } catch (_) {}
+    try {
+      final dynamic value = task.points;
+      if (value is int) return value;
+    } catch (_) {}
+    return 10;
   }
 
-  Future<void> createTask({
+  Future<VideoTaskModel> createTask({
     required String title,
     required String videoUrl,
     required int targetViews,
     String? ownerUid,
   }) async {
-    final TaskItem item = TaskItem(
+    final VideoTaskModel item = VideoTaskModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title.trim(),
       videoUrl: videoUrl.trim(),
@@ -50,21 +65,20 @@ class TaskService {
       ownerUid: ownerUid,
     );
     _tasks.add(item);
+    return item;
   }
 }
 
 class CreateTaskScreen extends StatefulWidget {
+  final dynamic currentPoints;
   final String? ownerUid;
-  final int? currentPoints;
-  final int? userPoints;
   final VoidCallback? onCreated;
   final VoidCallback? onTaskCreated;
 
   const CreateTaskScreen({
     super.key,
-    this.ownerUid,
     this.currentPoints,
-    this.userPoints,
+    this.ownerUid,
     this.onCreated,
     this.onTaskCreated,
   });
@@ -103,7 +117,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     try {
       final int views = int.tryParse(_viewsController.text.trim()) ?? 100;
-      await _taskService.createTask(
+      final VideoTaskModel created = await _taskService.createTask(
         title: _titleController.text,
         videoUrl: _urlController.text,
         targetViews: views <= 0 ? 100 : views,
@@ -124,9 +138,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
       );
 
-      _titleController.clear();
-      _urlController.clear();
-      _viewsController.text = '100';
+      Navigator.of(context).pop(created);
     } finally {
       if (mounted) {
         setState(() {
@@ -140,7 +152,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Widget build(BuildContext context) {
     const Color primaryRed = Color(0xFFD32F2F);
     const Color surfaceWhite = Color(0xFFFFFFFF);
-    final int availablePoints = widget.currentPoints ?? widget.userPoints ?? 0;
+    final String pointsText = widget.currentPoints?.toString() ?? '0';
 
     return Scaffold(
       backgroundColor: surfaceWhite,
@@ -169,7 +181,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     border: Border.all(color: primaryRed),
                   ),
                   child: Text(
-                    'Mevcut Puan: $availablePoints',
+                    'Mevcut Puan: $pointsText',
                     style: const TextStyle(
                       color: primaryRed,
                       fontWeight: FontWeight.bold,
