@@ -37,7 +37,18 @@ class TaskService {
 }
 
 class CreateTaskScreen extends StatefulWidget {
-  const CreateTaskScreen({super.key});
+  final int? currentPoints;
+  final int? userPoints;
+  final VoidCallback? onCreated;
+  final VoidCallback? onTaskCreated;
+
+  const CreateTaskScreen({
+    super.key,
+    this.currentPoints,
+    this.userPoints,
+    this.onCreated,
+    this.onTaskCreated,
+  });
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -79,6 +90,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         targetViews: views <= 0 ? 100 : views,
       );
 
+      widget.onCreated?.call();
+      widget.onTaskCreated?.call();
+
       if (!mounted) {
         return;
       }
@@ -106,6 +120,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Widget build(BuildContext context) {
     const Color primaryRed = Color(0xFFD32F2F);
     const Color surfaceWhite = Color(0xFFFFFFFF);
+    final int availablePoints = widget.currentPoints ?? widget.userPoints ?? 0;
 
     return Scaffold(
       backgroundColor: surfaceWhite,
@@ -123,6 +138,25 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: surfaceWhite,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: primaryRed),
+                  ),
+                  child: Text(
+                    'Mevcut Puan: $availablePoints',
+                    style: const TextStyle(
+                      color: primaryRed,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _titleController,
                   decoration: InputDecoration(
