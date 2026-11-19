@@ -31,13 +31,7 @@ class MyCampaignsScreen extends StatelessWidget {
         .where('ownerUid', isEqualTo: ownerUid)
         .limit(50);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kampanyalarım', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: Colors.white,
-      ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -138,7 +132,6 @@ class MyCampaignsScreen extends StatelessWidget {
             },
           );
         },
-      ),
-    );
+      );
   }
 }
