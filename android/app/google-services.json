@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "906788470859",
+    "project_id": "yt-mutual",
+    "storage_bucket": "yt-mutual.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906788470859:android:4293eec0353d6323024dce",
+        "android_client_info": {
+          "package_name": "com.mycompany.ytmutual"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "906788470859-mu5923kgj95tlm07tc3tl921kohkuteg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mycompany.ytmutual",
+            "certificate_hash": "9bbb3186b2189ef16d8f272bdab59362c395cbb4"
+          }
+        },
+        {
+          "client_id": "906788470859-a57l23o6b4n3j40e6f1h2vkl4eafmbda.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsv5drzPT1nJax06QuodJFkw61tZNQJGI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "906788470859-a57l23o6b4n3j40e6f1h2vkl4eafmbda.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "906788470859-bpdei3bn6gm55n8b82qflj1997io30qt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mycompany.ytmutual"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
