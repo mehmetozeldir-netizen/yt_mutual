@@ -34,7 +34,7 @@ class TaskService {
     return 10;
   }
 
-  Future> createTask({
+  Future<Map<String, dynamic>> createTask({
     required String title,
     required String videoUrl,
     required int targetViews,
