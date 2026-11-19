@@ -10,53 +10,112 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
-          channel: 'stable'
-      - name: Generate Android project and configure Firebase
+          channel: stable
+
+      # The repository currently has no checked-in android/ directory.
+      # Generate it with the exact Firebase package/application ID.
+      - name: Generate Android project
         shell: bash
         run: |
-          if [ ! -d "android" ]; then
-            flutter create . --platforms=android --project-name yt_mutual --org com.mycompany
+          if [ ! -d android ]; then
+            flutter create . --platforms=android --org com.mycompany --project-name ytmutual
           fi
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          app_gradle = Path("android/app/build.gradle.kts")
-          text = app_gradle.read_text()
-          text = text.replace('namespace = "com.example.yt_mutual"', 'namespace = "com.mycompany.ytmutual"')
-          text = text.replace('applicationId = "com.example.yt_mutual"', 'applicationId = "com.mycompany.ytmutual"')
-          if "id(\"com.google.gms.google-services\")" not in text:
-              text = text.replace(
-                  'id("com.android.application")',
-                  'id("com.android.application")\n    id("com.google.gms.google-services")'
-              )
-          app_gradle.write_text(text)
+          # Flutter 3.24 normally creates Groovy Gradle files. Support both
+          # Groovy and Kotlin DSL so the workflow does not assume the wrong filename.
+          app_gradle = next((p for p in [
+              Path("android/app/build.gradle"),
+              Path("android/app/build.gradle.kts"),
+          ] if p.exists()), None)
+          settings_gradle = next((p for p in [
+              Path("android/settings.gradle"),
+              Path("android/settings.gradle.kts"),
+          ] if p.exists()), None)
 
-          settings = Path("android/settings.gradle.kts")
-          if settings.exists():
-              s = settings.read_text()
-              marker = 'id("com.android.application")'
-              if 'id("com.google.gms.google-services")' not in s:
-                  s = s.replace(
-                      marker,
-                      marker + '\n        id("com.google.gms.google-services") version "4.4.2" apply false'
-                  )
-              settings.write_text(s)
+          if app_gradle is None or settings_gradle is None:
+              raise SystemExit("Android Gradle files were not generated.")
+
+          app = app_gradle.read_text()
+          settings = settings_gradle.read_text()
+          is_kts = app_gradle.suffix == ".kts"
+
+          # Force the Firebase Android package name in the app module.
+          if is_kts:
+              app = re.sub(r'namespace\\s*=\\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\\s*=\\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              app = app.replace(android_plugin, android_plugin + "\\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              # Add the plugin declaration inside the existing plugins { } block.
+              match = re.search(r'plugins\\s*\\{', settings)
+              if not match:
+                  raise SystemExit("Could not find plugins block in settings.gradle.")
+              insert_at = match.end()
+              settings = settings[:insert_at] + "\\n    " + settings_plugin + settings[insert_at:]
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Ensure the generated launcher package is aligned with applicationId.
+          kotlin_root = Path("android/app/src/main/kotlin")
+          java_root = Path("android/app/src/main/java")
+          source_root = kotlin_root if kotlin_root.exists() else java_root
+          if source_root.exists():
+              old_files = list(source_root.rglob("MainActivity.kt")) + list(source_root.rglob("MainActivity.java"))
+              target_dir = source_root / "com" / "mycompany" / "ytmutual"
+              target_dir.mkdir(parents=True, exist_ok=True)
+              for source in old_files:
+                  if source.parent != target_dir:
+                      target = target_dir / source.name
+                      text = source.read_text()
+                      text = re.sub(r'^package\\s+[^;\\n]+;?\\s*$', 
+                                    'package com.mycompany.ytmutual', text, count=1, flags=re.M)
+                      source.unlink()
+                      target.write_text(text)
           PY
 
-          if [ ! -f "android/app/google-services.json" ]; then
-            echo "::warning::android/app/google-services.json is not present. Upload it to enable Firebase configuration in the APK."
-            sed -i '/id("com.google.gms.google-services")/d' android/app/build.gradle.kts
+          echo "Android applicationId:"
+          grep -R 'applicationId' android/app/build.gradle* 
+          echo "Firebase package must be com.mycompany.ytmutual."
+
+      - name: Check Firebase configuration
+        run: |
+          if [ ! -f android/app/google-services.json ]; then
+            echo "::error::Missing android/app/google-services.json. Upload the Firebase Android config for package com.mycompany.ytmutual, then rerun this workflow."
+            exit 1
           fi
+
       - run: flutter pub get
       - run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
