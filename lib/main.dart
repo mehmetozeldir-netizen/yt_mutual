@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'core/constants/app_colors.dart';
 import 'features/auth/models/user_model.dart';
@@ -7,7 +8,9 @@ import 'features/tasks/screens/create_task_screen.dart';
 import 'features/tasks/screens/home_screen.dart';
 import 'features/tasks/services/task_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const YtMutualApp());
 }
 
