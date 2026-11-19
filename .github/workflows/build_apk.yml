@@ -75,9 +75,9 @@ jobs:
               app = re.sub(r'targetSdk\s*=\s*[^\s]+', 'targetSdk = 35', app, count=1)
               app = re.sub(r'compileSdk\s*=\s*[^\s]+', 'compileSdk = 35', app, count=1)
           else:
-              app = re.sub(r'minSdk(?:Version)?\s+[^\s]+', 'minSdk 23', app, count=1)
-              app = re.sub(r'targetSdk(?:Version)?\s+[^\s]+', 'targetSdk 35', app, count=1)
-              app = re.sub(r'compileSdk(?:Version)?\s+[^\s]+', 'compileSdk 35', app, count=1)
+              app = re.sub(r'minSdk(?:Version)?\s+[^\s]+', 'minSdkVersion 23', app, count=1)
+              app = re.sub(r'targetSdk(?:Version)?\s+[^\s]+', 'targetSdkVersion 35', app, count=1)
+              app = re.sub(r'compileSdk(?:Version)?\s+[^\s]+', 'compileSdkVersion 35', app, count=1)
           app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
           app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
           app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
@@ -111,7 +111,7 @@ jobs:
               pos = match.end()
               settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
 
-          if not ("minSdk = 23" in app or re.search(r"minSdk(?:Version)?\s+23\b", app)):
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
               raise SystemExit("Failed to set Android minSdk to 23.")
 
           app_gradle.write_text(app)
