@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    match /users/{uid} {
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.points == 0
+        && !('role' in request.resource.data);
+      allow read: if isOwner(uid) || isAdmin();
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.points == resource.data.points
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName', 'photoUrl', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /campaigns/{campaignId} {
+      allow read: if (signedIn() && resource.data.status == 'active')
+        || (signedIn() && resource.data.ownerUid == request.auth.uid)
+        || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly([
+          'ownerUid', 'title', 'youtubeUrl', 'videoId',
+          'description', 'status', 'createdAt'
+        ]);
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'moderatedAt', 'moderatedBy', 'moderationNote']);
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.ownerUid == request.auth.uid
+          && resource.data.status == 'pending');
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
