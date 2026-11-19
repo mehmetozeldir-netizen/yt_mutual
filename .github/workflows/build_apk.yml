@@ -24,7 +24,10 @@ jobs:
       - name: Generate Android project and configure Firebase
         shell: bash
         run: |
-          if [ ! -d android ]; then
+          # The checked-in Android scaffold omits the binary Gradle wrapper JAR.
+          # Regenerate the complete Flutter Android project in CI when it is absent.
+          if [ ! -f android/gradlew ] || [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            rm -rf android
             flutter create . --platforms=android --org com.mycompany --project-name ytmutual
           fi
 
