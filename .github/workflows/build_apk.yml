@@ -62,11 +62,26 @@ jobs:
           settings = settings_gradle.read_text()
           kts = app_gradle.suffix == ".kts"
 
-          # Replace Flutter SDK-derived values without evaluating the Flutter extension.
-          # The Flutter Gradle plugin itself remains applied below and still builds the Dart app.
+          # Set all SDK/version fields explicitly; do not depend on the nullable Flutter extension.
           if kts:
-              replacements = {
-                  r'^\s*minSdk\s*=.*
+              app = re.sub(r'(?m)^\s*minSdk\s*=.*$', '        minSdk = 23', app, count=1)
+              app = re.sub(r'(?m)^\s*targetSdk\s*=.*$', '        targetSdk = 35', app, count=1)
+              app = re.sub(r'(?m)^\s*compileSdk\s*=.*$', '    compileSdk = 35', app, count=1)
+              app = re.sub(r'(?m)^\s*ndkVersion\s*=.*$', '    ndkVersion = "27.0.12077973"', app, count=1)
+              app = re.sub(r'(?m)^\s*versionCode\s*=.*$', '            versionCode = 1', app, count=1)
+              app = re.sub(r'(?m)^\s*versionName\s*=.*$', '            versionName = "1.0"', app, count=1)
+          else:
+              app = re.sub(r'(?m)^\s*minSdk(?:Version)?\s+.*$', '        minSdk 23', app, count=1)
+              app = re.sub(r'(?m)^\s*targetSdk(?:Version)?\s+.*$', '        targetSdk 35', app, count=1)
+              app = re.sub(r'(?m)^\s*compileSdk(?:Version)?\s+.*$', '    compileSdk 35', app, count=1)
+              app = re.sub(r'(?m)^\s*ndkVersion\s+.*$', '    ndkVersion "27.0.12077973"', app, count=1)
+              app = re.sub(r'(?m)^\s*versionCode\s+.*$', '            versionCode 1', app, count=1)
+              app = re.sub(r'(?m)^\s*versionName\s+.*$', '            versionName "1.0"', app, count=1)
+
+          unresolved = re.findall(r'\bflutter\.[A-Za-z_][A-Za-z0-9_]*', app)
+          if unresolved:
+              raise SystemExit("Unresolved Flutter Gradle references: " + ", ".join(sorted(set(unresolved))))
+
           if kts:
               app = re.sub(r'namespace\s*=\s*"[^"]+"',
                            'namespace = "com.mycompany.ytmutual"', app, count=1)
