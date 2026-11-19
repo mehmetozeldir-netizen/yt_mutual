@@ -71,13 +71,738 @@ jobs:
           app = app.replace("flutter.versionName", '"1.0"')
 
           if kts:
-              app = re.sub(r'minSdk\s*=\s*[^\s]+', 'minSdk = 23', app, count=1)
-              app = re.sub(r'targetSdk\s*=\s*[^\s]+', 'targetSdk = 35', app, count=1)
-              app = re.sub(r'compileSdk\s*=\s*[^\s]+', 'compileSdk = 35', app, count=1)
+              app = re.sub(r'^\s*minSdk\s*=.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
           else:
-              app = re.sub(r'minSdk(?:Version)?\s+[^\s]+', 'minSdkVersion 23', app, count=1)
-              app = re.sub(r'targetSdk(?:Version)?\s+[^\s]+', 'targetSdkVersion 35', app, count=1)
-              app = re.sub(r'compileSdk(?:Version)?\s+[^\s]+', 'compileSdkVersion 35', app, count=1)
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        minSdk = 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdk\s*=.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        targetSdk = 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdk\s*=.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '    compileSdk = 35', app, count=1, flags=re.M)
+          else:
+              # Match complete Gradle statements, not the "compileSdk" prefix
+              # inside "compileSdkVersion" (which previously duplicated values).
+              app = re.sub(r'^\s*minSdkVersion\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        minSdkVersion 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*minSdk\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        minSdk 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdkVersion\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        targetSdkVersion 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdk\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '        targetSdk 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdkVersion\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '    compileSdkVersion 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdk\s+.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+          app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
+          app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
+
+          if kts:
+              app = re.sub(r'namespace\s*=\s*"[^"]+"',
+                           'namespace = "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s*=\s*"[^"]+"',
+                           'applicationId = "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id("com.google.gms.google-services")'
+              android_plugin = 'id("com.android.application")'
+              settings_plugin = 'id("com.google.gms.google-services") version "4.4.2" apply false'
+          else:
+              app = re.sub(r'namespace\s+[\'"][^\'"]+[\'"]',
+                           'namespace "com.mycompany.ytmutual"', app, count=1)
+              app = re.sub(r'applicationId\s+[\'"][^\'"]+[\'"]',
+                           'applicationId "com.mycompany.ytmutual"', app, count=1)
+              app_plugin = 'id "com.google.gms.google-services"'
+              android_plugin = 'id "com.android.application"'
+              settings_plugin = 'id "com.google.gms.google-services" version "4.4.2" apply false'
+
+          if app_plugin not in app:
+              if android_plugin not in app:
+                  raise SystemExit("Android application plugin declaration not found.")
+              app = app.replace(android_plugin, android_plugin + "\n    " + app_plugin, 1)
+
+          if "com.google.gms.google-services" not in settings:
+              match = re.search(r'plugins\s*\{', settings)
+              if not match:
+                  raise SystemExit("Gradle settings plugins block not found.")
+              pos = match.end()
+              settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not ("minSdk = 23" in app or re.search(r"minSdkVersion\s+23\b", app)):
+              raise SystemExit("Failed to set Android minSdk to 23.")
+
+          app_gradle.write_text(app)
+          settings_gradle.write_text(settings)
+
+          # Move MainActivity to the package directory expected by the app ID.
+          roots = [
+              Path("android/app/src/main/kotlin"),
+              Path("android/app/src/main/java"),
+          ]
+          for root in roots:
+              if root.exists():
+                  for source in list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java")):
+                      target_dir = root / "com" / "mycompany" / "ytmutual"
+                      target_dir.mkdir(parents=True, exist_ok=True)
+                      target = target_dir / source.name
+                      if source != target:
+                          body = source.read_text()
+                          body = re.sub(r'^package\s+[^;\n]+;?\s*$', 
+                                        'package com.mycompany.ytmutual', body, count=1, flags=re.M)
+                          source.unlink()
+                          target.write_text(body)
+          PY
+
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
+          grep -R 'applicationId' android/app/build.gradle*
+
+      - name: Verify Firebase configuration
+        shell: bash
+        run: |
+          test -f android/app/google-services.json || {
+            echo "::error::Upload google-services.json to android/app/. The Firebase Android app package must be com.mycompany.ytmutual."
+            exit 1
+          }
+
+      - run: flutter pub get
+      - run: flutter build apk --release --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+, '    compileSdk 35', app, count=1, flags=re.M)
           app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
           app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
           app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
