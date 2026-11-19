@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 class HomeScreen extends StatefulWidget {
   final String ownerUid;
   final String taskType;
-  const HomeScreen({super.key, required this.ownerUid, this.taskType = 'İzle'});
+  final bool isActive;
+  const HomeScreen({super.key, required this.ownerUid, this.taskType = 'İzle', this.isActive = true});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -18,7 +19,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    if (widget.isActive) _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      setState(() => _seconds = _duration);
+      _startTimer();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _timer?.cancel();
+    }
   }
 
   @override
