@@ -2,129 +2,120 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../admin/screens/admin_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final User user;
-
   const ProfileScreen({super.key, required this.user});
 
-  Future<void> _signOut(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+  Future<void> _editName(BuildContext context, String current) async {
+    final controller = TextEditingController(text: current);
+    final name = await showDialog<String>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Profil adını düzenle'),
+      content: TextField(controller: controller, maxLength: 40,
+        decoration: const InputDecoration(labelText: 'Ad / kullanıcı adı')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+        FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()),
+          child: const Text('Kaydet')),
+      ],
+    ));
+    controller.dispose();
+    if (name == null || name.trim().length < 2) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'displayName': name.trim(), 'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await user.updateDisplayName(name.trim());
   }
 
   @override
   Widget build(BuildContext context) {
-    final profile = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final history = FirebaseFirestore.instance.collection('campaigns')
+      .where('ownerUid', isEqualTo: user.uid).limit(30);
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: Colors.white,
-        title: const Text('Profilim', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            tooltip: 'Çıkış yap',
-            onPressed: () => _signOut(context),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Profilim'),
+        backgroundColor: AppColors.primaryRed, foregroundColor: Colors.white,
+        actions: [IconButton(tooltip: 'Çıkış yap',
+          onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout))]),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: profile.snapshots(),
+        stream: userRef.snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text('Profil bilgileri yüklenemedi.'));
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snapshot.data!.data() ?? <String, dynamic>{};
-          final displayName = data['displayName'] as String? ??
-              user.displayName ?? 'Yt Mutual Üyesi';
-          final email = data['email'] as String? ?? user.email ?? '';
+          if (snapshot.hasError) return const Center(child: Text('Profil yüklenemedi.'));
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final data = snapshot.data!.data() ?? {};
+          final name = data['displayName'] as String? ?? user.displayName ?? 'Yt Mutual Üyesi';
           final points = (data['points'] as num?)?.toInt() ?? 0;
-          final watched = (data['watchedVideosCount'] as num?)?.toInt() ?? 0;
-          final completed = (data['completedTasksCount'] as num?)?.toInt() ?? 0;
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.cardWhite,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Column(children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: AppColors.softRed,
-                    child: Text(
-                      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'Y',
-                      style: const TextStyle(
-                        color: AppColors.primaryRed,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(displayName, style: const TextStyle(
-                    color: AppColors.textDark, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(email, style: const TextStyle(color: AppColors.textMuted)),
-                ]),
-              ),
-              const SizedBox(height: 16),
-              _StatCard(label: 'Puan bakiyesi', value: '$points', icon: Icons.stars),
+          return ListView(padding: const EdgeInsets.all(16), children: [
+            Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
+              CircleAvatar(radius: 38, backgroundColor: AppColors.softRed,
+                child: Text(name.isEmpty ? 'Y' : name[0].toUpperCase(),
+                  style: const TextStyle(color: AppColors.primaryRed, fontSize: 28))),
+              const SizedBox(height: 10),
+              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(user.email ?? '', style: const TextStyle(color: AppColors.textMuted)),
               const SizedBox(height: 12),
-              _StatCard(label: 'İzlenen video sayısı', value: '$watched',
-                icon: Icons.play_circle_fill),
-              const SizedBox(height: 12),
-              _StatCard(label: 'Tamamlanan görev sayısı', value: '$completed',
-                icon: Icons.check_circle),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () => _signOut(context),
-                icon: const Icon(Icons.logout),
-                label: const Text('Hesaptan çıkış yap'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryRed,
-                  side: const BorderSide(color: AppColors.primaryRed),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ],
-          );
+              OutlinedButton.icon(onPressed: () => _editName(context, name),
+                icon: const Icon(Icons.edit), label: const Text('Profili düzenle')),
+            ]))),
+            const SizedBox(height: 12),
+            Card(color: AppColors.softRed, child: ListTile(
+              leading: const Icon(Icons.account_balance_wallet, color: AppColors.primaryRed),
+              title: const Text('Puan bakiyesi'),
+              trailing: Text('$points', style: const TextStyle(
+                color: AppColors.darkRed, fontSize: 20, fontWeight: FontWeight.bold)),
+              subtitle: const Text('YouTube izlenmesi, beğenisi veya abonesi için puan verilmez.'),
+            )),
+            const SizedBox(height: 18),
+            const Text('Gönderdiğim içerikler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: history.snapshots(),
+              builder: (context, items) {
+                if (items.hasError) return const Text('Gönderi geçmişi yüklenemedi.');
+                if (!items.hasData) return const Center(child: CircularProgressIndicator());
+                if (items.data!.docs.isEmpty) return const Text('Henüz içerik göndermedin.');
+                return Column(children: items.data!.docs.map((doc) {
+                  final item = doc.data();
+                  final status = item['status'] as String? ?? 'pending';
+                  final label = switch (status) {
+                    'active' => 'Yayında',
+                    'rejected' => 'Reddedildi',
+                    _ => 'Onay bekliyor',
+                  };
+                  return Card(child: ListTile(
+                    leading: const Icon(Icons.ondemand_video, color: AppColors.primaryRed),
+                    title: Text(item['title'] as String? ?? 'İçerik'),
+                    subtitle: Text(label),
+                    trailing: status == 'pending' ? IconButton(
+                      tooltip: 'Gönderiyi sil', icon: const Icon(Icons.delete_outline),
+                      onPressed: () => FirebaseFirestore.instance.collection('campaigns').doc(doc.id).delete(),
+                    ) : null,
+                  ));
+                }).toList());
+              },
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<IdTokenResult>(
+              future: user.getIdTokenResult(true),
+              builder: (context, token) {
+                if (token.data?.claims?['admin'] != true) return const SizedBox.shrink();
+                return FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryRed),
+                  onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const AdminScreen())),
+                  icon: const Icon(Icons.admin_panel_settings),
+                  label: const Text('Yönetici paneli'),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(onPressed: () => FirebaseAuth.instance.signOut(),
+              icon: const Icon(Icons.logout), label: const Text('Hesaptan çıkış yap')),
+          ]);
         },
       ),
     );
   }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AppColors.softRed,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.borderLight),
-    ),
-    child: Row(children: [
-      Icon(icon, color: AppColors.primaryRed, size: 26),
-      const SizedBox(width: 12),
-      Expanded(child: Text(label, style: const TextStyle(
-        color: AppColors.textDark, fontSize: 15, fontWeight: FontWeight.w500))),
-      Text(value, style: const TextStyle(
-        color: AppColors.darkRed, fontSize: 18, fontWeight: FontWeight.bold)),
-    ]),
-  );
 }
