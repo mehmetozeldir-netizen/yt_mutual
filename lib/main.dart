@@ -192,16 +192,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final pages = [
       MyCampaignsScreen(ownerUid: widget.user.uid, onCreate: _openCreate),
       HomeScreen(ownerUid: widget.user.uid, taskType: 'İzle'),
-      const _CommunityInfoScreen(
-        title: 'Abone ol',
-        icon: Icons.person_add_alt_1,
-        description: 'YouTube kanallarını kendi tercihinle ziyaret edebilirsin. Abonelik karşılığında puan verilmez ve otomatik abonelik yapılmaz.',
-      ),
-      const _CommunityInfoScreen(
-        title: 'Beğen',
-        icon: Icons.thumb_up_alt_outlined,
-        description: 'İçerikleri inceleyip görüşünü özgürce belirtebilirsin. Beğeni karşılığında puan verilmez ve otomatik beğeni yapılmaz.',
-      ),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'Abone Ol'),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'Beğen'),
     ];
 
     return Scaffold(
@@ -265,9 +257,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         IconButton(
                           tooltip: 'Bildir / şikayet et',
                           onPressed: () => _showInfo('Bildirim', 'Uygunsuz içerikleri destek ekibine bildirebilirsin.'),
-                          icon: const Icon(Icons.hexagon_outlined, color: Color(0xFF777777), size: 25),
+                          icon: const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(Icons.hexagon_outlined, color: Color(0xFF777777), size: 27),
+                                Padding(
+                                  padding: EdgeInsets.only(top: 1),
+                                  child: Text('!', style: TextStyle(color: Color(0xFF777777), fontSize: 14, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        const Text('!', style: TextStyle(color: Color(0xFF777777), fontWeight: FontWeight.bold)),
                         const SizedBox(width: 4),
                       ],
                     ),
