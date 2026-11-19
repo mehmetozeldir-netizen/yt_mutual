@@ -64,9 +64,9 @@ jobs:
 
           # Firebase Auth requires Android API level 23 or newer.
           if kts:
-              app = re.sub(r'minSdk\\s*=\\s*[^\\s]+', 'minSdk = 23', app, count=1)
+              app = re.sub(r'minSdk\s*=\s*[^\s]+, 'minSdk = 23', app, count=1)
           else:
-              app = re.sub(r'minSdk(?:Version)?\\s+[^\\s]+', 'minSdk 23', app, count=1)
+              app = re.sub(r'minSdk(?:Version)?\s+[^\s]+, 'minSdk 23', app, count=1)
 
           if kts:
               app = re.sub(r'namespace\s*=\s*"[^"]+"',
@@ -96,6 +96,9 @@ jobs:
                   raise SystemExit("Gradle settings plugins block not found.")
               pos = match.end()
               settings = settings[:pos] + "\n    " + settings_plugin + settings[pos:]
+
+          if not re.search(r"minSdk(?:Version)?\\s*(?:=\\s*)?23\\b", app):
+              raise SystemExit("Failed to set Android minSdk to 23.")
 
           app_gradle.write_text(app)
           settings_gradle.write_text(settings)
