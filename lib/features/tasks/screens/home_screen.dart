@@ -16,6 +16,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timer;
 
   @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
