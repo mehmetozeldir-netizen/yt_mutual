@@ -103,6 +103,7 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int _index = 0;
+  bool _automatic = false;
 
   Future<void> _openCreate() async {
     await Navigator.of(context).push(
@@ -190,7 +191,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     final pages = [
       MyCampaignsScreen(ownerUid: widget.user.uid, onCreate: _openCreate),
-      HomeScreen(ownerUid: widget.user.uid),
+      HomeScreen(ownerUid: widget.user.uid, taskType: 'İzle'),
       const _CommunityInfoScreen(
         title: 'Abone ol',
         icon: Icons.person_add_alt_1,
@@ -205,48 +206,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(108),
+        preferredSize: const Size.fromHeight(104),
         child: SafeArea(
           bottom: false,
           child: Material(
-            color: AppColors.primaryRed,
+            color: Colors.white,
             child: Column(
               children: [
                 SizedBox(
-                  height: 52,
+                  height: 54,
                   child: Row(
                     children: [
                       Builder(
                         builder: (context) => IconButton(
                           tooltip: 'Menü',
-                          color: Colors.white,
-                          icon: const Icon(Icons.menu, size: 28),
+                          color: const Color(0xFF1A1A1A),
+                          icon: const Icon(Icons.menu, size: 27),
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         ),
                       ),
-                      const Spacer(),
-                      const Text('YT MUTUAL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                      const Text('yt mutual', style: TextStyle(color: Color(0xFF1A1A1A), fontSize: 17, fontWeight: FontWeight.w600)),
                       const Spacer(),
                       StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                         stream: FirebaseFirestore.instance.collection('users').doc(widget.user.uid).snapshots(),
                         builder: (context, snapshot) {
                           final points = (snapshot.data?.data()?['points'] as num?)?.toInt() ?? 0;
                           return Padding(
-                            padding: const EdgeInsets.only(right: 12),
+                            padding: const EdgeInsets.only(right: 18),
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(18),
                               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WalletScreen(user: widget.user))),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.stars_rounded, color: AppColors.primaryRed, size: 19),
-                                    const SizedBox(width: 5),
-                                    Text('$points', style: const TextStyle(color: AppColors.primaryRed, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
+                              child: Row(children: [
+                                Text('$points', style: const TextStyle(color: Color(0xFF171717), fontSize: 16, fontWeight: FontWeight.w700)),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.favorite, color: Color(0xFFE53935), size: 23),
+                              ]),
                             ),
                           );
                         },
@@ -254,16 +247,33 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ],
                   ),
                 ),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFEAEAEA)),
                 SizedBox(
                   height: 48,
-                  child: Row(
-                    children: [
-                      _TopAction(icon: Icons.play_circle_outline, label: 'Otomatik izle', onTap: () => _openTopAction('Otomatik izle')),
-                      _TopAction(icon: Icons.person_add_alt_1, label: 'Abone ol', onTap: () => _openTopAction('Abone ol')),
-                      _TopAction(icon: Icons.thumb_up_alt_outlined, label: 'Beğen', onTap: () => _openTopAction('Beğen')),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        const Text('Otomatik', style: TextStyle(color: Color(0xFF777777), fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Switch.adaptive(
+                          value: _automatic,
+                          activeColor: const Color(0xFFE53935),
+                          onChanged: (value) => setState(() => _automatic = value),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Bildir / şikayet et',
+                          onPressed: () => _showInfo('Bildirim', 'Uygunsuz içerikleri destek ekibine bildirebilirsin.'),
+                          icon: const Icon(Icons.hexagon_outlined, color: Color(0xFF777777), size: 25),
+                        ),
+                        const Text('!', style: TextStyle(color: Color(0xFF777777), fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 4),
+                      ],
+                    ),
                   ),
                 ),
+                const Divider(height: 1, color: Color(0xFFF0F0F0)),
               ],
             ),
           ),
@@ -320,17 +330,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
             )
           : null,
       bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        indicatorColor: Colors.transparent,
+        height: 68,
         selectedIndex: _index,
         onDestinationSelected: (index) => setState(() => _index = index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Kampanyalarım'),
-          NavigationDestination(icon: Icon(Icons.play_circle_outline), selectedIcon: Icon(Icons.play_circle_fill), label: 'İzle'),
-          NavigationDestination(icon: Icon(Icons.person_add_alt_1_outlined), selectedIcon: Icon(Icons.person_add_alt_1), label: 'Abone ol'),
-          NavigationDestination(icon: Icon(Icons.thumb_up_alt_outlined), selectedIcon: Icon(Icons.thumb_up_alt), label: 'Beğen'),
+          NavigationDestination(icon: Icon(Icons.list_alt_outlined), selectedIcon: Icon(Icons.list_alt, color: Color(0xFFE53935)), label: 'Kampanya'),
+          NavigationDestination(icon: _YoutubeNavIcon(active: false), selectedIcon: _YoutubeNavIcon(active: true), label: 'İzle'),
+          NavigationDestination(icon: Icon(Icons.video_library_outlined), selectedIcon: Icon(Icons.video_library, color: Color(0xFFE53935)), label: 'Abone Ol'),
+          NavigationDestination(icon: Icon(Icons.thumb_up_alt_outlined), selectedIcon: Icon(Icons.thumb_up_alt, color: Color(0xFFE53935)), label: 'Beğen'),
         ],
       ),
     );
   }
+}
+
+class _YoutubeNavIcon extends StatelessWidget {
+  final bool active;
+  const _YoutubeNavIcon({required this.active});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 25, height: 18,
+    decoration: BoxDecoration(color: active ? const Color(0xFFE53935) : const Color(0xFFBDBDBD), borderRadius: BorderRadius.circular(5)),
+    child: const Icon(Icons.play_arrow, color: Colors.white, size: 16),
+  );
 }
 
 class _TopAction extends StatelessWidget {
