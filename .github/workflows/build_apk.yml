@@ -71,7 +71,18 @@ jobs:
           app = app.replace("flutter.versionName", '"1.0"')
 
           if kts:
-              app = re.sub(r'^\s*minSdk\s*=.*          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
+              app = re.sub(r'^\s*minSdk\s*=.*$', '        minSdk = 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdk\s*=.*$', '        targetSdk = 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdk\s*=.*$', '    compileSdk = 35', app, count=1, flags=re.M)
+          else:
+              # Match full statement names and full lines to avoid duplicated SDK values.
+              app = re.sub(r'^\s*minSdkVersion\s+.*$', '        minSdkVersion 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*minSdk\s+.*$', '        minSdk 23', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdkVersion\s+.*$', '        targetSdkVersion 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*targetSdk\s+.*$', '        targetSdk 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdkVersion\s+.*$', '    compileSdkVersion 35', app, count=1, flags=re.M)
+              app = re.sub(r'^\s*compileSdk\s+.*$', '    compileSdk 35', app, count=1, flags=re.M)
+          app = app.replace('ndkVersion flutter.ndkVersion', 'ndkVersion "27.0.12077973"')
           app = app.replace('versionCode flutter.versionCode', 'versionCode 1')
           app = app.replace('versionName flutter.versionName', 'versionName "1.0"')
 
