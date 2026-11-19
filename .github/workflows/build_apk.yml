@@ -136,7 +136,11 @@ jobs:
                           target.write_text(body)
           PY
 
-          echo "Configured Android application ID:"
+          echo "===== Generated android/app/build.gradle ====="
+          nl -ba android/app/build.gradle
+          echo "===== Generated android/settings.gradle ====="
+          nl -ba android/settings.gradle
+          echo "===== Android application ID ====="
           grep -R 'applicationId' android/app/build.gradle*
 
       - name: Verify Firebase configuration
@@ -148,7 +152,7 @@ jobs:
           }
 
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: flutter build apk --release --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
