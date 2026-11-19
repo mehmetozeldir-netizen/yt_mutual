@@ -1,240 +1,230 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/youtube_helper.dart';
-import '../models/video_task_model.dart';
-import '../services/task_service.dart';
+
+class TaskItem {
+  final String id;
+  final String title;
+  final String videoUrl;
+  final int targetViews;
+
+  TaskItem({
+    required this.id,
+    required this.title,
+    required this.videoUrl,
+    required this.targetViews,
+  });
+}
+
+class TaskService {
+  static final List<TaskItem> _tasks = <TaskItem>[];
+
+  List<TaskItem> getTasks() {
+    return List<TaskItem>.unmodifiable(_tasks);
+  }
+
+  Future<void> createTask({
+    required String title,
+    required String videoUrl,
+    required int targetViews,
+  }) async {
+    final TaskItem item = TaskItem(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title.trim(),
+      videoUrl: videoUrl.trim(),
+      targetViews: targetViews,
+    );
+    _tasks.add(item);
+  }
+}
 
 class CreateTaskScreen extends StatefulWidget {
-  final int currentPoints;
-  final String ownerUid;
-
-  const CreateTaskScreen({
-    super.key,
-    required this.currentPoints,
-    required this.ownerUid,
-  });
+  const CreateTaskScreen({super.key});
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
 }
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _urlController = TextEditingController();
-  final _rewardController = TextEditingController(text: '10');
-  final _secondsController = TextEditingController(text: '30');
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _viewsController =
+      TextEditingController(text: '100');
   final TaskService _taskService = TaskService();
+
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _urlController.dispose();
-    _rewardController.dispose();
-    _secondsController.dispose();
+    _viewsController.dispose();
     super.dispose();
   }
 
-  void _submitTask() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final videoId = YouTubeHelper.extractVideoId(_urlController.text.trim());
-    if (videoId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.darkRed,
-          content: Text(
-            'Lütfen geçerli bir YouTube video bağlantısı girin.',
-            style: TextStyle(color: AppColors.cardWhite),
-          ),
-        ),
-      );
+  Future<void> _submitTask() async {
+    final FormState? form = _formKey.currentState;
+    if (form == null || !form.validate()) {
       return;
     }
 
-    final reward = int.tryParse(_rewardController.text.trim()) ?? 10;
-    final seconds = int.tryParse(_secondsController.text.trim()) ?? 30;
-    const creationCost = 20;
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    final canCreate = _taskService.hasEnoughPointsForTask(
-      currentPoints: widget.currentPoints,
-      requiredCost: creationCost,
-    );
+    try {
+      final int views = int.tryParse(_viewsController.text.trim()) ?? 100;
+      await _taskService.createTask(
+        title: _titleController.text,
+        videoUrl: _urlController.text,
+        targetViews: views <= 0 ? 100 : views,
+      );
 
-    if (!canCreate) {
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          backgroundColor: AppColors.darkRed,
-          content: Text(
-            'Görev oluşturmak için en az $creationCost puan gerekli.',
-            style: TextStyle(color: AppColors.cardWhite),
-          ),
+          content: Text('Gorev olusturuldu.'),
+          backgroundColor: Color(0xFFD32F2F),
         ),
       );
-      return;
+
+      _titleController.clear();
+      _urlController.clear();
+      _viewsController.text = '100';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
-
-    final newTask = VideoTaskModel(
-      id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-      ownerUid: widget.ownerUid,
-      youtubeUrl: _urlController.text.trim(),
-      videoId: videoId,
-      title: _titleController.text.trim(),
-      rewardPoints: reward,
-      requiredSeconds: seconds,
-    );
-
-    Navigator.pop(context, newTask);
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryRed = Color(0xFFD32F2F);
+    const Color surfaceWhite = Color(0xFFFFFFFF);
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: surfaceWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: AppColors.cardWhite,
-        title: const Text(
-          'Yeni Görev Oluştur',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        backgroundColor: primaryRed,
+        foregroundColor: surfaceWhite,
+        title: const Text('Yeni Gorev Olustur'),
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.softRed,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Text(
-                  'Mevcut Puan: ${widget.currentPoints}  •  Görev Açma Bedeli: 20 Puan',
-                  style: const TextStyle(
-                    color: AppColors.darkRed,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _titleController,
-                style: const TextStyle(color: AppColors.textDark),
-                decoration: InputDecoration(
-                  labelText: 'Görev Başlığı',
-                  labelStyle: const TextStyle(color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: AppColors.cardWhite,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: AppColors.borderLight),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Başlık boş bırakılamaz';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _urlController,
-                style: const TextStyle(color: AppColors.textDark),
-                decoration: InputDecoration(
-                  labelText: 'YouTube Video Linki',
-                  hintText: 'https://www.youtube.com/watch?v=...',
-                  labelStyle: const TextStyle(color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: AppColors.cardWhite,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: AppColors.borderLight),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'YouTube bağlantısı gerekli';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _rewardController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: AppColors.textDark),
-                      decoration: InputDecoration(
-                        labelText: 'Ödül Puanı',
-                        filled: true,
-                        fillColor: AppColors.cardWhite,
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.borderLight),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Video / Gorev Basligi',
+                    filled: true,
+                    fillColor: surfaceWhite,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _secondsController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: AppColors.textDark),
-                      decoration: InputDecoration(
-                        labelText: 'Süre (Saniye)',
-                        filled: true,
-                        fillColor: AppColors.cardWhite,
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.borderLight),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.primaryRed, width: 2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                  validator: (String? value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Baslik girin';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _urlController,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: 'YouTube Video Baglantisi',
+                    filled: true,
+                    fillColor: surfaceWhite,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryRed,
-                  foregroundColor: AppColors.cardWhite,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  validator: (String? value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Baglanti girin';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _viewsController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Hedef Izlenme',
+                    filled: true,
+                    fillColor: surfaceWhite,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: primaryRed),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-                onPressed: _submitTask,
-                child: const Text(
-                  'Görevi Yayınla',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const SizedBox(height: 22),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: surfaceWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _isSubmitting ? null : _submitTask,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: surfaceWhite,
+                            ),
+                          )
+                        : const Text(
+                            'Gorevi Kaydet',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
