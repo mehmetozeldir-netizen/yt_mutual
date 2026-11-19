@@ -1,90 +1,161 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../core/constants/app_colors.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final String ownerUid;
-  const HomeScreen({super.key, required this.ownerUid});
+  final String taskType;
+  const HomeScreen({super.key, required this.ownerUid, this.taskType = 'İzle'});
 
-  Future<void> _openVideo(BuildContext context, String value) async {
-    final uri = Uri.tryParse(value);
-    if (uri == null || !['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com']
-      .contains(uri.host.toLowerCase())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli YouTube bağlantısı bulunamadı.')));
-      return;
-    }
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('YouTube bağlantısı açılamadı.')));
-    }
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const int _duration = 64;
+  int _seconds = _duration;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    if (_seconds == 0) setState(() => _seconds = _duration);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_seconds <= 1) {
+        timer.cancel();
+        setState(() => _seconds = 0);
+      } else {
+        setState(() => _seconds--);
+      }
+    });
+  }
+
+  void _changeTask() {
+    _timer?.cancel();
+    setState(() => _seconds = _duration);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Yeni içerik bulunamadı. Daha sonra tekrar deneyebilirsin.')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final query = FirebaseFirestore.instance.collection('campaigns')
-      .where('status', isEqualTo: 'active').limit(50);
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: query.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(
-            child: Padding(padding: EdgeInsets.all(24),
-              child: Text('İçerikler yüklenemedi. Firebase bağlantısını ve Firestore kurallarını kontrol edin.',
-                textAlign: TextAlign.center)));
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) return Center(child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.video_library_outlined, size: 58, color: AppColors.primaryRed),
-              const SizedBox(height: 12),
-              const Text('Henüz yayınlanmış içerik yok.',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
-              const SizedBox(height: 6),
-              const Text('İlk içeriği sen gönderebilirsin. İçerikler yönetici onayından sonra burada görünür.',
-                textAlign: TextAlign.center),
-            ]),
-          ));
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: docs.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final data = docs[index].data();
-              final title = data['title'] as String? ?? 'İçerik';
-              final description = data['description'] as String? ?? '';
-              final url = data['youtubeUrl'] as String? ?? '';
-              final owner = data['ownerUid'] as String? ?? '';
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: AppColors.borderLight)),
-                child: Padding(padding: const EdgeInsets.all(16), child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      const Icon(Icons.play_circle_fill, color: AppColors.primaryRed, size: 28),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                      if (owner == ownerUid) const Chip(label: Text('Senin içeriğin')),
-                    ]),
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 8), Text(description)],
-                    const SizedBox(height: 12),
-                    SizedBox(width: double.infinity, child: FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primaryRed),
-                      onPressed: () => _openVideo(context, url),
-                      icon: const Icon(Icons.open_in_new), label: const Text('YouTube’da aç'))),
-                    const SizedBox(height: 6),
-                    const Text('İçerik keşfi ve gönüllü geri bildirim içindir. İzlenme, beğeni veya abone karşılığında puan verilmez.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                  ],
-                )),
-              );
-            },
-          );
-        },
-      );
+    final isWatch = widget.taskType == 'İzle';
+    final isSubscribe = widget.taskType == 'Abone Ol';
+    final score = isWatch ? '48' : (isSubscribe ? '32' : '16');
+    return ColoredBox(
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+              child: Row(
+                children: [
+                  _Metric(icon: Icons.favorite, value: score, label: 'Puan'),
+                  const Spacer(),
+                  _Metric(icon: Icons.timer_outlined, value: '$_seconds', label: 'Saniye'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: 1.12,
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.black,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          isWatch ? Icons.play_circle_outline
+                              : (isSubscribe ? Icons.video_library_outlined : Icons.thumb_up_alt_outlined),
+                          color: Colors.white24,
+                          size: 58,
+                        ),
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          right: 12,
+                          child: Text(
+                            isWatch ? 'Video oynatıcı alanı'
+                                : (isSubscribe ? 'Abonelik içerikleri' : 'Beğeni içerikleri'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _changeTask,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0A0A0A),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text('Değiştir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                _seconds == 0 ? 'Süre tamamlandı' : 'Görev süresi: $_seconds saniye',
+                style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+class _Metric extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _Metric({required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE2E2E2)),
+        ),
+        child: Icon(icon, color: Colors.black, size: 22),
+      ),
+      const SizedBox(width: 10),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: const TextStyle(color: Color(0xFF171717), fontSize: 25, height: 1, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
+        ],
+      ),
+    ],
+  );
 }
