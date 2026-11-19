@@ -14,6 +14,11 @@ jobs:
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
+      - name: Generate Android files if missing
+        run: |
+          if [ ! -d "android" ]; then
+            flutter create . --platforms=android --project-name yt_mutual
+          fi
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
