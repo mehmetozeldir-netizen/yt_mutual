@@ -5,12 +5,14 @@ class TaskItem {
   final String title;
   final String videoUrl;
   final int targetViews;
+  final String? ownerUid;
 
   TaskItem({
     required this.id,
     required this.title,
     required this.videoUrl,
     required this.targetViews,
+    this.ownerUid,
   });
 }
 
@@ -25,18 +27,21 @@ class TaskService {
     required String title,
     required String videoUrl,
     required int targetViews,
+    String? ownerUid,
   }) async {
     final TaskItem item = TaskItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title.trim(),
       videoUrl: videoUrl.trim(),
       targetViews: targetViews,
+      ownerUid: ownerUid,
     );
     _tasks.add(item);
   }
 }
 
 class CreateTaskScreen extends StatefulWidget {
+  final String? ownerUid;
   final int? currentPoints;
   final int? userPoints;
   final VoidCallback? onCreated;
@@ -44,6 +49,7 @@ class CreateTaskScreen extends StatefulWidget {
 
   const CreateTaskScreen({
     super.key,
+    this.ownerUid,
     this.currentPoints,
     this.userPoints,
     this.onCreated,
@@ -88,6 +94,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         title: _titleController.text,
         videoUrl: _urlController.text,
         targetViews: views <= 0 ? 100 : views,
+        ownerUid: widget.ownerUid,
       );
 
       widget.onCreated?.call();
